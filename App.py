@@ -5,58 +5,133 @@ from urllib.request import urlopen
 from newspaper import Article
 import io
 import nltk
+
 nltk.download('punkt')
 
-st.set_page_config(page_title='InNews🇮🇳: A Summarised News📰 Portal', page_icon='./Meta/newspaper.ico')
+st.set_page_config(
+    page_title='SHORT_NEWS: A Summarised News📰 Portal',
+    page_icon='./Meta/newspaper.ico',
+    layout="wide"
+)
 
+# Custom CSS for styling
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #f4f4f9;
+        font-family: 'Arial', sans-serif;
+    }
+    .title-header {
+        font-size: 2.5rem;
+        color: #ff4b4b;
+        text-align: center;
+        font-weight: bold;
+        margin-top: 30px;
+    }
+    .sub-header {
+        font-size: 1.2rem;
+        color: #444444;
+        text-align: center;
+        margin-bottom: 50px;
+    }
+    .category-label {
+        font-weight: bold;
+        color: #1e88e5;
+    }
+    .footer {
+        font-size: 0.9rem;
+        color: #888888;
+        text-align: center;
+        margin-top: 50px;
+    }
+    .stExpanderHeader {
+        color: #1e88e5;
+    }
+    .stTextInput, .stSelectbox {
+        width: 100%;
+        max-width: 600px;
+    }
+    .card {
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        margin: 20px 0;
+        padding: 20px;
+    }
+    .card h3 {
+        color: #ff4b4b;
+        font-size: 1.4rem;
+        margin-bottom: 10px;
+    }
+    .card p {
+        font-size: 1rem;
+        color: #333;
+    }
+    .card .source {
+        font-size: 0.9rem;
+        color: #888;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Fetch news and job functions (same as before)
 
 def fetch_news_search_topic(topic):
-    site = 'https://news.google.com/rss/search?q={}'.format(topic)
-    op = urlopen(site)  # Open that site
-    rd = op.read()  # read data from site
-    op.close()  # close the object
-    sp_page = soup(rd, 'xml')  # scrapping data from site
-    news_list = sp_page.find_all('item')  # finding news
+    site = f'https://news.google.com/rss/search?q={topic}'
+    op = urlopen(site)
+    rd = op.read()
+    op.close()
+    sp_page = soup(rd, 'xml')
+    news_list = sp_page.find_all('item')
     return news_list
-
 
 def fetch_top_news():
     site = 'https://news.google.com/news/rss'
-    op = urlopen(site)  # Open that site
-    rd = op.read()  # read data from site
-    op.close()  # close the object
-    sp_page = soup(rd, 'xml')  # scrapping data from site
-    news_list = sp_page.find_all('item')  # finding news
+    op = urlopen(site)
+    rd = op.read()
+    op.close()
+    sp_page = soup(rd, 'xml')
+    news_list = sp_page.find_all('item')
     return news_list
-
 
 def fetch_category_news(topic):
-    site = 'https://news.google.com/news/rss/headlines/section/topic/{}'.format(topic)
-    op = urlopen(site)  # Open that site
-    rd = op.read()  # read data from site
-    op.close()  # close the object
-    sp_page = soup(rd, 'xml')  # scrapping data from site
-    news_list = sp_page.find_all('item')  # finding news
+    site = f'https://news.google.com/news/rss/headlines/section/topic/{topic}'
+    op = urlopen(site)
+    rd = op.read()
+    op.close()
+    sp_page = soup(rd, 'xml')
+    news_list = sp_page.find_all('item')
     return news_list
 
+def resize_image(image, max_width=700):
+    width, height = image.size
+    aspect_ratio = height / width
+    new_width = min(width, max_width)
+    new_height = int(new_width * aspect_ratio)
+    return image.resize((new_width, new_height))
 
 def fetch_news_poster(poster_link):
     try:
         u = urlopen(poster_link)
         raw_data = u.read()
         image = Image.open(io.BytesIO(raw_data))
-        st.image(image, use_column_width=True)
+        resized_image = resize_image(image)  # Resize the image
+        st.image(resized_image, use_column_width=False)  # Display the resized image
     except:
         image = Image.open('./Meta/no_image.jpg')
-        st.image(image, use_column_width=True)
+        resized_image = resize_image(image)  # Resize default image
+        st.image(resized_image, use_column_width=False)  # Display the resized image
 
-
+# Display news in a card-like layout
 def display_news(list_of_news, news_quantity):
     c = 0
     for news in list_of_news:
         c += 1
-        # st.markdown(f"({c})[ {news.title.text}]({news.link.text})")
-        st.write('**({}) {}**'.format(c, news.title.text))
+        st.markdown(f'<div class="card">', unsafe_allow_html=True)
+        st.markdown(f"### {news.title.text}", unsafe_allow_html=True)
         news_data = Article(news.link.text)
         try:
             news_data.download()
@@ -65,69 +140,64 @@ def display_news(list_of_news, news_quantity):
         except Exception as e:
             st.error(e)
         fetch_news_poster(news_data.top_image)
-        with st.expander(news.title.text):
+        with st.expander(f"Summary: {news.title.text}"):
             st.markdown(
-                '''<h6 style='text-align: justify;'>{}"</h6>'''.format(news_data.summary),
-                unsafe_allow_html=True)
-            st.markdown("[Read more at {}...]({})".format(news.source.text, news.link.text))
-        st.success("Published Date: " + news.pubDate.text)
+                f"<p style='text-align: justify;'>{news_data.summary}</p>",
+                unsafe_allow_html=True
+            )
+            st.markdown(f"[Read more at {news.source.text}]({news.link.text})")
+        st.markdown(f'<p class="source">Published Date: {news.pubDate.text}</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         if c >= news_quantity:
             break
 
-
 def run():
-    st.title("InNews🇮🇳: A Summarised News📰")
-    image = Image.open('./Meta/newspaper.png')
+    st.markdown("<h1 class='title-header'>InNews🇮🇳: A Summarised News📰 Portal</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='sub-header'>Get the latest news, customized for your interests.</p>", unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([3, 5, 3])
+    # Banner Image
+    banner_image = Image.open('./Meta/newspaper.png')
+    resized_banner_image = resize_image(banner_image, max_width=1000)  # Resize banner image
+    st.image(resized_banner_image, use_column_width=False)
 
-    with col1:
-        st.write("")
+    # Sidebar Navigation
+    st.sidebar.title("Navigation Menu")
+    category = st.sidebar.radio("Select Category", ['Trending🔥 News', 'Favourite💙 Topics', 'Search🔍 Topic'])
 
-    with col2:
-        st.image(image, use_column_width=False)
-
-    with col3:
-        st.write("")
-    category = ['--Select--', 'Trending🔥 News', 'Favourite💙 Topics', 'Search🔍 Topic']
-    cat_op = st.selectbox('Select your Category', category)
-    if cat_op == category[0]:
-        st.warning('Please select Type!!')
-    elif cat_op == category[1]:
-        st.subheader("✅ Here is the Trending🔥 news for you")
+    if category == 'Trending🔥 News':
+        st.subheader("✅ Trending🔥 News for You")
         no_of_news = st.slider('Number of News:', min_value=5, max_value=25, step=1)
         news_list = fetch_top_news()
         display_news(news_list, no_of_news)
-    elif cat_op == category[2]:
-        av_topics = ['Choose Topic', 'WORLD', 'NATION', 'BUSINESS', 'TECHNOLOGY', 'ENTERTAINMENT', 'SPORTS', 'SCIENCE',
-                     'HEALTH']
-        st.subheader("Choose your favourite Topic")
-        chosen_topic = st.selectbox("Choose your favourite Topic", av_topics)
-        if chosen_topic == av_topics[0]:
-            st.warning("Please Choose the Topic")
-        else:
+
+    elif category == 'Favourite💙 Topics':
+        av_topics = ['WORLD', 'NATION', 'BUSINESS', 'TECHNOLOGY', 'ENTERTAINMENT', 'SPORTS', 'SCIENCE', 'HEALTH']
+        chosen_topic = st.sidebar.selectbox("Choose Your Favourite Topic", av_topics)
+        if chosen_topic:
+            st.subheader(f"✅ News on {chosen_topic}")
             no_of_news = st.slider('Number of News:', min_value=5, max_value=25, step=1)
             news_list = fetch_category_news(chosen_topic)
             if news_list:
-                st.subheader("✅ Here are the some {} News for you".format(chosen_topic))
                 display_news(news_list, no_of_news)
             else:
-                st.error("No News found for {}".format(chosen_topic))
+                st.error(f"No News Found for {chosen_topic}.")
 
-    elif cat_op == category[3]:
-        user_topic = st.text_input("Enter your Topic🔍")
+    elif category == 'Search🔍 Topic':
+        user_topic = st.sidebar.text_input("Enter Your Topic🔍")
         no_of_news = st.slider('Number of News:', min_value=5, max_value=15, step=1)
 
-        if st.button("Search") and user_topic != '':
+        if st.sidebar.button("Search") and user_topic:
             user_topic_pr = user_topic.replace(' ', '')
-            news_list = fetch_news_search_topic(topic=user_topic_pr)
+            news_list = fetch_news_search_topic(user_topic_pr)
             if news_list:
-                st.subheader("✅ Here are the some {} News for you".format(user_topic.capitalize()))
+                st.subheader(f"✅ News on {user_topic.capitalize()}")
                 display_news(news_list, no_of_news)
             else:
-                st.error("No News found for {}".format(user_topic))
+                st.error(f"No News Found for {user_topic}.")
         else:
-            st.warning("Please write Topic Name to Search🔍")
+            st.warning("Please Enter a Topic to Search.")
 
+    # Footer
+    st.markdown("<p class='footer'>InNews © 2025. All Rights Reserved.</p>", unsafe_allow_html=True)
 
 run()
